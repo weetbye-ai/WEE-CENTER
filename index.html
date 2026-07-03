@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wee센터 주간업무공유</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Noto Sans KR', sans-serif; background-color: #f8fafc; font-size: 17px; }
+    .bg-pastel-pink { background-color: #FFF0F2; border-left: 6px solid #FFA6B9; }
+    .bg-pastel-blue { background-color: #EBF5FF; border-left: 6px solid #A3CFFF; }
+    .bg-pastel-yellow { background-color: #FEFCE8; border-left: 6px solid #FDE047; }
+    .bg-pastel-purple { background-color: #F3E8FF; border-left: 6px solid #C084FC; }
+    .bg-pastel-green { background-color: #F0FFF4; border-left: 6px solid #48BB78; } /* 공동출장 색상 */
+    
+    .badge-pink { background-color: #FFA6B9; color: #fff; }
+    .badge-blue { background-color: #A3CFFF; color: #fff; }
+    .badge-yellow { background-color: #FDE047; color: #78350f; }
+    .badge-purple { background-color: #C084FC; color: #fff; }
+    .badge-green { background-color: #48BB78; color: #fff; }
+  </style>
+</head>
+<body class="p-4 md:p-8 text-slate-800">
+
+  <div class="w-full max-w-[100%] mx-auto space-y-6">
+    <header class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 flex flex-col lg:flex-row justify-between items-stretch gap-6">
+      <div class="flex flex-col justify-between py-1">
+        <div>
+          <h1 class="text-4xl font-black text-slate-900 tracking-tight">🏢 Wee센터 주간업무공유</h1>
+          <p class="text-base text-slate-400 mt-2 font-bold">2026.01 ~ 2027.02 통합 시스템</p>
+        </div>
+        <div class="flex bg-slate-100 p-2 rounded-2xl mt-8 max-w-md">
+          <button onclick="switchView('monthly')" id="tab-monthly" class="flex-1 px-5 py-3 rounded-xl text-base font-black transition-all cursor-pointer bg-white text-slate-900 shadow-sm">월간 보기</button>
+          <button onclick="switchView('weekly')" id="tab-weekly" class="flex-1 px-5 py-3 rounded-xl text-base font-black transition-all cursor-pointer text-slate-600 hover:text-slate-900">주간 보기</button>
+          <button onclick="switchView('assignee')" id="tab-assignee" class="flex-1 px-5 py-3 rounded-xl text-base font-black transition-all cursor-pointer text-slate-600 hover:text-slate-900">담당자별</button>
+        </div>
+      </div>
+      <div class="flex-1 lg:max-w-2xl bg-slate-50 p-6 rounded-2xl border border-slate-200 flex flex-col justify-between">
+        <div class="flex justify-between items-center mb-3">
+          <span class="text-lg font-black text-slate-600" id="coop-label">주간 협조사항</span>
+          <button onclick="saveCooperation()" class="text-sm bg-slate-900 hover:bg-slate-800 text-white px-6 py-2 rounded-xl transition-all cursor-pointer font-black shadow-md">저장</button>
+        </div>
+        <textarea id="coop-textarea" class="w-full h-24 p-4 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400 resize-none text-base leading-relaxed font-bold" placeholder="협조사항을 입력하세요..."></textarea>
+      </div>
+    </header>
+
+    <div class="flex flex-col lg:flex-row gap-6 items-start">
+      <aside class="w-full lg:w-80 bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-8 flex-shrink-0">
+        <div>
+          <label class="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">기간 선택</label>
+          <div class="flex items-center justify-between bg-slate-50 p-2 rounded-2xl border border-slate-200">
+            <button onclick="changePeriod(-1)" class="px-5 py-2 hover:bg-white rounded-xl transition-all cursor-pointer font-black text-2xl">&lt;</button>
+            <span id="current-period-text" class="text-base font-black text-slate-800">2026년 01월</span>
+            <button onclick="changePeriod(1)" class="px-5 py-2 hover:bg-white rounded-xl transition-all cursor-pointer font-black text-2xl">&gt;</button>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">담당자 필터</label>
+          <div class="grid grid-cols-1 gap-2" id="filter-container"></div>
+        </div>
+        <button onclick="openModal('add')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 px-6 rounded-2xl transition-all cursor-pointer shadow-lg text-lg text-center block">+ 새 일정 등록</button>
+      </aside>
+
+      <main id="view-container" class="w-full flex-1 bg-white p-6 rounded-3xl shadow-sm border border-slate-100 min-h-[900px] overflow-x-auto"></main>
+    </div>
+  </div>
+
+  <div id="schedule-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-50 p-4">
+    <div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden">
+      <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+        <h3 id="modal-title" class="text-xl font-black text-slate-900">업무 일정 등록</h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 font-bold text-3xl cursor-pointer">&times;</button>
+      </div>
+      <form id="modal-form" onsubmit="handleFormSubmit(event)" class="p-8 space-y-6">
+        <input type="hidden" id="event-id">
+        <div class="grid grid-cols-2 gap-6">
+          <div><label class="block text-base font-bold text-slate-600 mb-2">시작일</label><input type="date" id="event-start-date" required class="w-full p-3 border border-slate-200 rounded-xl text-base focus:ring-2 focus:ring-blue-500 outline-none"></div>
+          <div><label class="block text-base font-bold text-slate-600 mb-2">종료일</label><input type="date" id="event-end-date" required class="w-full p-3 border border-slate-200 rounded-xl text-base focus:ring-2 focus:ring-blue-500 outline-none"></div>
+        </div>
+        <div><label class="block text-base font-bold text-slate-600 mb-2">시간 (선택)</label><input type="time" id="event-time" class="w-full p-3 border border-slate-200 rounded-xl text-base focus:ring-2 focus:ring-blue-500 outline-none"></div>
+        <div>
+          <label class="block text-base font-bold text-slate-600 mb-2">담당자 선택</label>
+          <select id="event-assignee" required class="w-full p-3 border border-slate-200 rounded-xl text-base font-bold focus:ring-2 focus:ring-blue-500 outline-none">
+            <option value="심웅섭">심웅섭 (핑크)</option><option value="김민정">김민정 (블루)</option><option value="김점숙">김점숙 (노랑)</option><option value="연은실">연은실 (보라)</option>
+            <option value="공동(웅섭+민정)">공동 (웅섭+민정 - 연두)</option><option value="공동(웅섭+은실)">공동 (웅섭+은실 - 연두)</option><option value="공동(민정+점숙)">공동 (민정+점숙 - 연두)</option>
+            <option value="공동(전체)">공동 (전체 - 연두)</option><option value="기타(공동)">기타 공동 일정 (연두)</option>
+          </select>
+        </div>
+        <div><label class="block text-base font-bold text-slate-600 mb-2">업무 내용</label><input type="text" id="event-task" required placeholder="예: 관내 출장, 상담 등" class="w-full p-3 border border-slate-200 rounded-xl text-base focus:ring-2 focus:ring-blue-500 outline-none"></div>
+        <div class="flex items-center gap-3 pt-2"><input type="checkbox" id="event-completed" class="w-6 h-6 text-blue-600 rounded border-slate-300"><label for="event-completed" class="text-base font-bold text-slate-600 cursor-pointer">업무 완료 표시</label></div>
+        <div class="flex justify-between gap-4 pt-6 border-t border-slate-100">
+          <button type="button" id="btn-delete" onclick="deleteEventClick()" class="hidden px-6 py-3 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-xl font-black transition-all cursor-pointer">삭제</button>
+          <div class="flex gap-3 ml-auto">
+            <button type="button" onclick="closeModal()" class="px-6 py-3 bg-slate-100 text-slate-600 rounded-xl font-black cursor-pointer">취소</button>
+            <button type="submit" class="px-8 py-3 bg-slate-900 text-white rounded-xl font-black cursor-pointer hover:bg-slate-800">일정 저장</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // ⚠️ 중요: 여기에 선생님의 진짜 Google 웹 앱 URL을 넣으세요!
+    const BASE_URL = 'https://script.google.com/macros/s/AKfycbxSvqE1jrNSc499euumAMliQQMyPUuh0FLCbl5Wpih4KWceUy15bILTSYESvuirK2iv/exec';
+
+    const ASSIGNEES_INFO = {
+      '심웅섭': { color: 'bg-pastel-pink', badge: 'badge-pink' },
+      '김민정': { color: 'bg-pastel-blue', badge: 'badge-blue' },
+      '김점숙': { color: 'bg-pastel-yellow', badge: 'badge-yellow' },
+      '연은실': { color: 'bg-pastel-purple', badge: 'badge-purple' },
+      '공동': { color: 'bg-pastel-green', badge: 'badge-green' }
+    };
+
+    function getStyleByAssignee(name) {
+      if (name.includes('공동') || name.includes('기타')) return ASSIGNEES_INFO['공동'];
+      return ASSIGNEES_INFO[name] || ASSIGNEES_INFO['공동'];
+    }
+
+    let currentView = 'monthly'; let currentDate = new Date(2026, 0, 1);
+    let activeFilters = ['심웅섭', '김민정', '김점숙', '연은실', '공동'];
+    let eventsData = []; let coopData = {};
+
+    window.onload = function() { initFilters(); fetchData(); };
+
+    function initFilters() {
+      const container = document.getElementById('filter-container'); container.innerHTML = '';
+      Object.keys(ASSIGNEES_INFO).forEach(name => {
+        const div = document.createElement('label');
+        div.className = 'flex items-center justify-between p-3 px-5 rounded-xl border border-slate-100 hover:bg-slate-50 cursor-pointer text-base font-black';
+        div.innerHTML = `
+          <div class="flex items-center gap-3"><span class="w-4 h-4 rounded-full ${ASSIGNEES_INFO[name].badge}"></span><span>${name}</span></div>
+          <input type="checkbox" checked value="${name}" onchange="toggleFilter('${name}')" class="w-5 h-5 text-slate-900 rounded border-slate-300">
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function toggleFilter(name) {
+      if (activeFilters.includes(name)) activeFilters = activeFilters.filter(n => n !== name);
+      else activeFilters.push(name);
+      renderView();
+    }
+
+    function isEventVisible(assignee) {
+      if (assignee.includes('공동') || assignee.includes('기타')) return activeFilters.includes('공동');
+      return activeFilters.includes(assignee);
+    }
+
+    async function fetchData() {
+      if(BASE_URL === 'YOUR_GAS_WEB_APP_URL') return;
+      try { const res = await fetch(BASE_URL); const data = await res.json(); eventsData = data.events || []; coopData = data.cooperation || {}; renderView(); }
+      catch (err) { alert("연결 오류! 구글 웹 앱 URL을 다시 확인해주세요."); }
+    }
+
+    async function postData(payload) {
+      try { const res = await fetch(BASE_URL, { method: 'POST', body: JSON.stringify(payload) }); return await res.json(); }
+      catch (err) { return { success: false }; }
+    }
+
+    function switchView(view) {
+      currentView = view;
+      ['monthly', 'weekly', 'assignee'].forEach(v => {
+        const btn = document.getElementById(`tab-${v}`);
+        btn.className = v === view ? "flex-1 px-5 py-3 rounded-xl text-base font-black transition-all cursor-pointer bg-white text-slate-900 shadow-sm" : "flex-1 px-5 py-3 rounded-xl text-base font-black transition-all cursor-pointer text-slate-600 hover:text-slate-900";
+      });
+      renderView();
+    }
+
+    function changePeriod(direction) {
+      if (currentView === 'weekly') currentDate.setDate(currentDate.getDate() + direction * 7);
+      else currentDate.setMonth(currentDate.getMonth() + direction);
+      renderView();
+    }
+
+    function pad(n) { return n < 10 ? '0' + n : n; }
+    function formatDate(date) { return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()); }
+    function getWeekDisplayString(date) {
+      const year = date.getFullYear(); const month = date.getMonth() + 1;
+      const firstDay = new Date(year, date.getMonth(), 1).getDay();
+      const weekNum = Math.ceil((date.getDate() + (firstDay === 0 ? 6 : firstDay - 1)) / 7);
+      return `${year}년 ${pad(month)}월 ${weekNum}주`;
+    }
+
+    function renderView() {
+      const container = document.getElementById('view-container'); const periodText = document.getElementById('current-period-text');
+      const currentWeekId = getWeekDisplayString(currentDate);
+      document.getElementById('coop-label').innerText = `주간 협조사항 [${currentWeekId}]`;
+      document.getElementById('coop-textarea').value = coopData[currentWeekId] || '';
+
+      if (currentView === 'monthly') { periodText.innerText = `${currentDate.getFullYear()}년 ${pad(currentDate.getMonth() + 1)}월`; renderMonthlyView(container); }
+      else if (currentView === 'weekly') { renderWeeklyView(container); }
+      else { periodText.innerText = `${currentDate.getFullYear()}년 ${pad(currentDate.getMonth() + 1)}월 (담당자별)`; renderAssigneeView(container); }
+    }
+
+    function renderMonthlyView(target) {
+      const year = currentDate.getFullYear(); const month = currentDate.getMonth();
+      const firstDay = new Date(year, month, 1).getDay(); const totalDays = new Date(year, month + 1, 0).getDate();
+      let html = `<div class="grid grid-cols-7 gap-4 text-center font-black text-sm text-slate-400 mb-6 border-b pb-4"><div class="text-rose-500">일요일</div><div>월요일</div><div>화요일</div><div>수요일</div><div>목요일</div><div>금요일</div><div class="text-blue-500">토요일</div></div><div class="grid grid-cols-7 gap-4 min-h-[850px]">`;
+      for (let i = 0; i < firstDay; i++) html += `<div class="bg-slate-50/20 rounded-2xl border border-dashed border-slate-100"></div>`;
+      for (let day = 1; day <= totalDays; day++) {
+        const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
+        const dayEvents = eventsData.filter(e => dateStr >= e.startDate && dateStr <= e.endDate && isEventVisible(e.assignee)).sort((a,b) => (a.time || '23:59').localeCompare(b.time || '23:59'));
+        html += `<div class="bg-slate-50 rounded-3xl p-4 border border-slate-100 flex flex-col min-h-[175px] hover:bg-slate-100 transition-all"><span class="text-base font-black text-slate-400 mb-3">${day}</span><div class="space-y-2 flex-1">
+          ${dayEvents.map(e => { const style = getStyleByAssignee(e.assignee); return `<div onclick="openEditModal('${e.id}')" class="${style.color} p-3 text-sm rounded-2xl shadow-sm flex flex-col gap-1 cursor-pointer hover:brightness-95 transition-all"><div class="flex items-start gap-2 w-full"><input type="checkbox" ${e.completed ? 'checked' : ''} onclick="event.stopPropagation(); toggleComplete('${e.id}')" class="w-5 h-5 text-slate-900 rounded-md"><span class="block w-full text-slate-800 ${e.completed ? 'line-through text-slate-300' : 'font-black'}">${e.time ? `<b class="text-blue-700">[${e.time}]</b> ` : ''}${e.task} <br><small class="text-slate-400 font-bold">${e.assignee}</small></span></div></div>`}).join('')}</div></div>`;
+      }
+      target.innerHTML = html + `</div>`;
+    }
+
+    function renderWeeklyView(target) {
+      const start = new Date(currentDate); start.setDate(start.getDate() - (start.getDay() === 0 ? 6 : start.getDay() - 1));
+      const end = new Date(start); end.setDate(end.getDate() + 6);
+      document.getElementById('current-period-text').innerText = `${start.getMonth()+1}/${start.getDate()} ~ ${end.getMonth()+1}/${end.getDate()}`;
+      let html = `<div class="grid grid-cols-7 gap-4 h-full">`; const days = ['월', '화', '수', '목', '금', '토', '일'];
+      for (let i = 0; i < 7; i++) {
+        const curr = new Date(start); curr.setDate(start.getDate() + i); const dateStr = formatDate(curr);
+        const dayEvents = eventsData.filter(e => dateStr >= e.startDate && dateStr <= e.endDate && isEventVisible(e.assignee)).sort((a,b) => (a.time || '23:59').localeCompare(b.time || '23:59'));
+        html += `<div class="bg-slate-50 p-5 rounded-3xl border border-slate-100 flex flex-col min-h-[600px]"><div class="border-b-2 mb-4 pb-2"><span class="font-black text-2xl">${curr.getDate()}</span> <span class="text-xs font-black text-slate-400">${days[i]}요일</span></div><div class="space-y-3">
+          ${dayEvents.map(e => { const style = getStyleByAssignee(e.assignee); return `<div onclick="openEditModal('${e.id}')" class="${style.color} p-4 rounded-2xl border shadow-sm flex flex-col gap-2 cursor-pointer transition-all"><div class="flex justify-between"><span class="text-xs px-2 py-0.5 rounded-md ${style.badge} font-black">${e.assignee}</span><input type="checkbox" ${e.completed ? 'checked' : ''} onclick="event.stopPropagation(); toggleComplete('${e.id}')" class="w-5 h-5 rounded"></div><p class="text-base font-black ${e.completed ? 'line-through text-slate-300' : ''}">${e.time ? `[${e.time}] ` : ''}${e.task}</p></div>`}).join('')}</div></div>`;
+      }
+      target.innerHTML = html + `</div>`;
+    }
+
+    function renderAssigneeView(target) {
+      const year = currentDate.getFullYear(); const month = currentDate.getMonth();
+      let html = `<div class="grid grid-cols-4 gap-4 h-full">`;
+      ['심웅섭', '김민정', '김점숙', '연은실'].forEach(name => {
+        const personEvents = eventsData.filter(e => e.assignee.includes(name) && (new Date(e.startDate).getMonth() === month || new Date(e.endDate).getMonth() === month)).sort((a,b) => a.startDate.localeCompare(b.startDate));
+        const style = ASSIGNEES_INFO[name];
+        html += `<div class="bg-slate-50 p-5 rounded-3xl border border-slate-100 flex flex-col min-h-[600px]"><div class="border-b-2 mb-4 pb-2 flex justify-between items-center"><span class="font-black text-xl">${name}</span> <span class="text-xs px-3 py-1 rounded-full ${style.badge} font-black">${personEvents.length}건</span></div><div class="space-y-3">
+          ${personEvents.map(e => `<div onclick="openEditModal('${e.id}')" class="bg-white p-4 rounded-2xl border shadow-sm flex flex-col gap-2 cursor-pointer transition-all"><div class="flex justify-between"><span class="text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-1 rounded-md">${e.startDate === e.endDate ? e.startDate.split('-')[2]+'일' : e.startDate.split('-')[2]+'~'+e.endDate.split('-')[2]+'일'}</span><input type="checkbox" ${e.completed ? 'checked' : ''} onclick="event.stopPropagation(); toggleComplete('${e.id}')" class="w-5 h-5 rounded"></div><p class="text-base font-black ${e.completed ? 'line-through text-slate-300' : ''}">${e.time ? `[${e.time}] ` : ''}${e.task}</p></div>`).join('')}</div></div>`;
+      });
+      target.innerHTML = html + `</div>`;
+    }
+
+    function openModal(mode) {
+      const modal = document.getElementById('schedule-modal'); document.getElementById('modal-form').reset();
+      if(mode === 'add') { document.getElementById('modal-title').innerText = "새 업무 등록"; document.getElementById('event-id').value = ""; document.getElementById('event-start-date').value = formatDate(currentDate); document.getElementById('event-end-date').value = formatDate(currentDate); document.getElementById('btn-delete').classList.add('hidden'); }
+      modal.classList.remove('hidden');
+    }
+
+    function openEditModal(id) {
+      const e = eventsData.find(ev => ev.id === id); if(!e) return;
+      document.getElementById('modal-title').innerText = "업무 수정 / 삭제"; document.getElementById('event-id').value = e.id; document.getElementById('event-start-date').value = e.startDate; document.getElementById('event-end-date').value = e.endDate; document.getElementById('event-time').value = e.time; document.getElementById('event-assignee').value = e.assignee; document.getElementById('event-task').value = e.task; document.getElementById('event-completed').checked = e.completed; document.getElementById('btn-delete').classList.remove('hidden');
+      document.getElementById('schedule-modal').classList.remove('hidden');
+    }
+
+    function closeModal() { document.getElementById('schedule-modal').classList.add('hidden'); }
+
+    async function toggleComplete(id) {
+      const e = eventsData.find(ev => ev.id === id); if(!e) return;
+      e.completed = !e.completed; renderView();
+      await postData({ action: "updateEvent", id: e.id, startDate: e.startDate, endDate: e.endDate, time: e.time, assignee: e.assignee, task: e.task, completed: e.completed });
+    }
+
+    async function handleFormSubmit(e) {
+      e.preventDefault(); const id = document.getElementById('event-id').value; const startDate = document.getElementById('event-start-date').value; const endDate = document.getElementById('event-end-date').value; const time = document.getElementById('event-time').value; const assignee = document.getElementById('event-assignee').value; const task = document.getElementById('event-task').value; const completed = document.getElementById('event-completed').checked;
+      closeModal();
+      if(!id) {
+        const tempId = 'ID_' + new Date().getTime(); eventsData.push({ id: tempId, startDate, endDate, time, assignee, task, completed }); renderView();
+        const res = await postData({ action: "addEvent", startDate, endDate, time, assignee, task });
+        if(res.success && res.id) { const idx = eventsData.findIndex(ev => ev.id === tempId); if(idx !== -1) eventsData[idx].id = res.id; }
+      } else {
+        const idx = eventsData.findIndex(ev => ev.id === id); if(idx !== -1) eventsData[idx] = { id, startDate, endDate, time, assignee, task, completed }; renderView();
+        await postData({ action: "updateEvent", id, startDate, endDate, time, assignee, task, completed });
+      }
+      fetchData();
+    }
+
+    async function deleteEventClick() {
+      const id = document.getElementById('event-id').value; if(!id || !confirm("삭제하시겠습니까?")) return;
+      closeModal(); eventsData = eventsData.filter(ev => ev.id !== id); renderView(); await postData({ action: "deleteEvent", id }); fetchData();
+    }
+
+    async function saveCooperation() {
+      const id = getWeekDisplayString(currentDate); const content = document.getElementById('coop-textarea').value;
+      coopData[id] = content; alert("저장되었습니다."); await postData({ action: "saveCoop", weekId: id, content: content });
+    }
+  </script>
+</body>
+</html>
